@@ -27,7 +27,6 @@ docker run -p 8080:8080 lilr_palooza
 ```
 or
 ```
-```
 docker run -p 8080:8080 cschin/lilr_palooza
 ```
 
