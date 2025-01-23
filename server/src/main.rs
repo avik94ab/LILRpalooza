@@ -133,9 +133,9 @@ struct B12Response {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Dna2GfeResponse {
-    invalid_input: bool,
-    exons: Vec<B12Response>,
-    introns: Vec<B12Response>,
+    valid_input: bool,
+    seq_name: String,
+    data: Vec<B12Response>,
 }
 
 fn split_by_case_transition(input: &str) -> Vec<String> {
@@ -180,9 +180,9 @@ async fn dna2gfe(
 
     if !SUPPORTED_GENES.contains(&dna_seq.gene_name[..]) {
         return Json(Dna2GfeResponse {
-            invalid_input: true,
-            exons: vec![],
-            introns: vec![],
+            valid_input: false,
+            seq_name: dna_seq.seq_name.clone(),
+            data: vec![]
         });
     }
 
@@ -235,9 +235,9 @@ async fn dna2gfe(
     //tracing::info!(target: "tron_app", "gff_file: {}", String::from_utf8_lossy(&miniprot_output.stdout[..]));
 
     let mut lines = miniprot_output.stdout.lines();
-    let mut exons: Vec<String> = vec![];
-    let mut introns: Vec<String> = vec![];
-
+    let mut data: Vec<(u32, String, String)> = vec![];
+    let mut exon_rank = 1_u32;
+    let mut intron_rank = 1_u32;
     while let Some(line) = lines.next_line().await.expect("can't read GFF output") {
         let parts: Vec<&str> = line.split_whitespace().collect();
         if parts.len() < 2 {
@@ -247,40 +247,42 @@ async fn dna2gfe(
             let seq = parts[1];
             let seq = seq.replace("-", "");
             let exon_introns = split_by_case_transition(&seq);
+            tracing::info!(target: "tron_app", "split out: {:?}", exon_introns);
             exon_introns.into_iter().for_each(|s| {
                 if s.starts_with(&['A', 'G', 'C', 'T'][..]) {
-                    exons.push(s);
+                    data.push( (exon_rank, "exon".to_string(), s) );
+                    exon_rank += 1; 
                 } else {
-                    introns.push(s);
+                    data.push( (intron_rank, "intron".to_string(), s) );
+                    intron_rank += 1;
                 }
             });
             break;
         }
     }
-    tracing::info!(target: "tron_app", "exons = {:?}", exons);
-    tracing::info!(target: "tron_app", "introns = {:?}", introns);
+    tracing::info!(target: "tron_app", "data = {:?}", data);
     
-    if exons.is_empty() {
+    if data.is_empty() {
         return Json(Dna2GfeResponse {
-            invalid_input: true,
-            exons: vec![],
-            introns: vec![],
+            valid_input: false,
+            seq_name: dna_seq.seq_name.clone(),
+            data: vec![],
         });
     }
 
     let req_client = Client::new();
 
     let mut dna2gfe_out = Dna2GfeResponse {
-        invalid_input: false,
-        exons: vec![],
-        introns: vec![],
+        valid_input: true,
+        seq_name: dna_seq.seq_name.clone(),
+        data: vec![],
     };
 
-    for (rank, s) in exons.iter().enumerate() {
+    for (rank, term, s) in data.iter() {
         let feature = B12FeatureReq {
             locus: dna_seq.gene_name.clone(),
-            term: "exon".to_string(),
-            rank: rank as u32,
+            term: term.clone(),
+            rank: *rank,
             sequence: s.to_uppercase(),
         };
         let response = req_client
@@ -293,32 +295,7 @@ async fn dna2gfe(
             // Deserialize the JSON response
             let response_body: B12Response = response.json().await.expect("b12x request fail");
             // println!("Response: {:?}", response_body);
-            dna2gfe_out.exons.push(response_body.clone());
-            tracing::info!(target: "tron_app", "b12x exon request response {:?}", response_body);
-        } else {
-            tracing::info!(target: "tron_app", "Failed to send request: {}", response.status());
-        }
-    }
-
-    for (rank, s) in introns.iter().enumerate() {
-        let feature = B12FeatureReq {
-            locus: dna_seq.gene_name.clone(),
-            term: "intron".to_string(),
-            rank: rank as u32,
-            sequence: s.to_uppercase(),
-        };
-        let response = req_client
-            .post("https://feature.b12x.org:443/features") // Replace with your target URL
-            .json(&feature) // Serialize the payload to JSON
-            .send()
-            .await
-            .expect("http request error");
-
-        if response.status().is_success() {
-            // Deserialize the JSON response
-            let response_body: B12Response = response.json().await.expect("b12x request fail");
-            // println!("Response: {:?}", response_body);
-            dna2gfe_out.introns.push(response_body.clone());
+            dna2gfe_out.data.push(response_body.clone());
             tracing::info!(target: "tron_app", "b12x exon request response {:?}", response_body);
         } else {
             tracing::info!(target: "tron_app", "Failed to send request: {}", response.status());
