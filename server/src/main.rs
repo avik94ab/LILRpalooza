@@ -210,7 +210,7 @@ async fn dna2gfe(
     fasta_file
         .flush()
         .await
-        .expect("writing fasta file error 1");
+        .expect("writing fasta file error 2");
 
     let miniprot_output = Command::new("/opt/bin/miniprot")
         .args([
