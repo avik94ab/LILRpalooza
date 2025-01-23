@@ -3,6 +3,7 @@
 
 use askama::Template;
 use futures_util::Future;
+use once_cell::sync::Lazy;
 use reqwest::Client;
 use tempfile::tempdir;
 
@@ -40,7 +41,21 @@ use tron_components::{
 //use std::sync::Mutex;
 use std::{collections::HashMap, env, fs, io::Read, pin::Pin, str::FromStr, sync::Arc};
 
+use std::collections::HashSet;
 use std::process::Command;
+
+static SUPPORTED_GENES: Lazy<HashSet<&'static str>> = Lazy::new(|| {
+    let mut set = HashSet::new();
+    let supported_genes = [
+        "CDC42EP5", "LILRA1", "LILRB1", "LILRB4", "LAIR1", "LENG8", "LILRA2", "LILRA5", "LILRB2",
+        "LILRB5", "LAIR2", "LENG9", "LILRA3", "LILRA6", "LILRB3", "TTYH1",
+    ];
+    supported_genes.into_iter().for_each(|k| {
+        set.insert(k);
+    });
+
+    set
+});
 
 // This is the main entry point of the application
 // It sets up the application configuration and state
@@ -118,8 +133,9 @@ struct B12Response {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Dna2GfeResponse {
+    invalid_input: bool,
     exons: Vec<B12Response>,
-    introns: Vec<B12Response>
+    introns: Vec<B12Response>,
 }
 
 fn split_by_case_transition(input: &str) -> Vec<String> {
@@ -154,7 +170,6 @@ async fn dna2gfe(
     _session: Session,
     Json(payload): Json<Value>,
 ) -> Json<Dna2GfeResponse> {
-
     // let _session_id = if let Some(session_id) = session.id() {
     //     session_id
     // } else {
@@ -162,6 +177,15 @@ async fn dna2gfe(
     // };
 
     let dna_seq: DnaSeqInput = serde_json::from_value(payload).unwrap();
+    
+    if !SUPPORTED_GENES.contains(&dna_seq.gene_name[..]) {
+        return Json(Dna2GfeResponse {
+            invalid_input: false,
+            exons: vec![],
+            introns: vec![],
+        });
+    }
+
     tracing::info!(target: "tron_app", "dna_seq input:{:?}", dna_seq);
 
     let work_tmp_dir = tempdir().unwrap();
@@ -239,8 +263,9 @@ async fn dna2gfe(
     let req_client = Client::new();
 
     let mut dna2gfe_out = Dna2GfeResponse {
+        invalid_input: true,
         exons: vec![],
-        introns: vec![]
+        introns: vec![],
     };
 
     for (rank, s) in exons.iter().enumerate() {
@@ -258,7 +283,7 @@ async fn dna2gfe(
             .expect("http request error");
         if response.status().is_success() {
             // Deserialize the JSON response
-            let response_body: B12Response  = response.json().await.expect("b12x request fail");
+            let response_body: B12Response = response.json().await.expect("b12x request fail");
             // println!("Response: {:?}", response_body);
             dna2gfe_out.exons.push(response_body.clone());
             tracing::info!(target: "tron_app", "b12x exon request response {:?}", response_body);
@@ -283,7 +308,7 @@ async fn dna2gfe(
 
         if response.status().is_success() {
             // Deserialize the JSON response
-            let response_body: B12Response  = response.json().await.expect("b12x request fail");
+            let response_body: B12Response = response.json().await.expect("b12x request fail");
             // println!("Response: {:?}", response_body);
             dna2gfe_out.introns.push(response_body.clone());
             tracing::info!(target: "tron_app", "b12x exon request response {:?}", response_body);
