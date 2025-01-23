@@ -188,10 +188,10 @@ async fn dna2gfe(
         .await
         .expect("writing fasta file error 1");
 
-    let miniprot_output = Command::new("./external_bin/miniprot")
+    let miniprot_output = Command::new("/opt/bin/miniprot")
         .args([
             &format!("{}", fasta_path.display()),
-            &format!("./ref_data/{}_prot.fa", dna_seq.gene_name),
+            &format!("/opt/ref_data/{}_prot.fa", dna_seq.gene_name),
             "-j",
             "2",
             "--trans",
