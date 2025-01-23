@@ -259,6 +259,14 @@ async fn dna2gfe(
     }
     tracing::info!(target: "tron_app", "exons = {:?}", exons);
     tracing::info!(target: "tron_app", "introns = {:?}", introns);
+    
+    if exons.is_empty() {
+        return Json(Dna2GfeResponse {
+            invalid_input: true,
+            exons: vec![],
+            introns: vec![],
+        });
+    }
 
     let req_client = Client::new();
 
