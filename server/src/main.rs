@@ -136,6 +136,7 @@ struct Dna2GfeResponse {
     valid_input: bool,
     seq_name: String,
     data: Vec<B12Response>,
+    gfe: String,
 }
 
 fn split_by_case_transition(input: &str) -> Vec<String> {
@@ -182,7 +183,8 @@ async fn dna2gfe(
         return Json(Dna2GfeResponse {
             valid_input: false,
             seq_name: dna_seq.seq_name.clone(),
-            data: vec![]
+            data: vec![],
+            gfe: "".to_string()
         });
     }
 
@@ -250,10 +252,10 @@ async fn dna2gfe(
             tracing::info!(target: "tron_app", "split out: {:?}", exon_introns);
             exon_introns.into_iter().for_each(|s| {
                 if s.starts_with(&['A', 'G', 'C', 'T'][..]) {
-                    data.push( (exon_rank, "exon".to_string(), s) );
-                    exon_rank += 1; 
+                    data.push((exon_rank, "exon".to_string(), s));
+                    exon_rank += 1;
                 } else {
-                    data.push( (intron_rank, "intron".to_string(), s) );
+                    data.push((intron_rank, "intron".to_string(), s));
                     intron_rank += 1;
                 }
             });
@@ -261,12 +263,13 @@ async fn dna2gfe(
         }
     }
     tracing::info!(target: "tron_app", "data = {:?}", data);
-    
+
     if data.is_empty() {
         return Json(Dna2GfeResponse {
             valid_input: false,
             seq_name: dna_seq.seq_name.clone(),
             data: vec![],
+            gfe: "".to_string()
         });
     }
 
@@ -276,6 +279,7 @@ async fn dna2gfe(
         valid_input: true,
         seq_name: dna_seq.seq_name.clone(),
         data: vec![],
+        gfe: "".into()
     };
 
     for (rank, term, s) in data.iter() {
@@ -301,6 +305,16 @@ async fn dna2gfe(
             tracing::info!(target: "tron_app", "Failed to send request: {}", response.status());
         }
     }
+
+    let gfe = dna2gfe_out
+        .data
+        .iter()
+        .map(|v| format!("{}", v.accession))
+        .collect::<Vec<String>>()
+        .join("-");
+
+    let gfe = format!("{}w{}", dna_seq.gene_name, gfe);
+    dna2gfe_out.gfe = gfe;
 
     Json(dna2gfe_out)
 }
