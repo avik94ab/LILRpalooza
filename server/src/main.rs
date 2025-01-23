@@ -177,10 +177,10 @@ async fn dna2gfe(
     // };
 
     let dna_seq: DnaSeqInput = serde_json::from_value(payload).unwrap();
-    
+
     if !SUPPORTED_GENES.contains(&dna_seq.gene_name[..]) {
         return Json(Dna2GfeResponse {
-            invalid_input: false,
+            invalid_input: true,
             exons: vec![],
             introns: vec![],
         });
@@ -263,7 +263,7 @@ async fn dna2gfe(
     let req_client = Client::new();
 
     let mut dna2gfe_out = Dna2GfeResponse {
-        invalid_input: true,
+        invalid_input: false,
         exons: vec![],
         introns: vec![],
     };
