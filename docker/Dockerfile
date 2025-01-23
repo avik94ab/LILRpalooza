@@ -9,7 +9,6 @@ RUN cd /opt/ && git clone https://github.com/lh3/miniprot.git
 RUN cd /opt/miniprot && make
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 RUN apt-get install -y openssl pkg-config libssl-dev
-RUN touch /trigger
 RUN cd /opt/ && git clone https://github.com/cschin/LILRpalooza.git
 RUN cd /opt/LILRpalooza/server && . $HOME/.cargo/env && cargo build --release
 ENV LANG en_US.utf8
