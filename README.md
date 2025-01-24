@@ -15,7 +15,8 @@ This will create an image tagged with `lilr_palooza`.
 ## pre build image
 You can pull down a pre-built image using `docker pull`
 ```
-docker pull cschin/lilr_palooza
+docker pull cschin/lilr_palooza-arm64 # for Apple silicon
+docker pull cschin/lilr_palooza-amd64 # for amd64 architechure
 ```
 
 ## run the server
@@ -27,7 +28,8 @@ docker run -p 8080:8080 lilr_palooza
 ```
 or
 ```
-docker run -p 8080:8080 cschin/lilr_palooza
+docker run -p 8080:8080 cschin/lilr_palooza-arm64 # for Apple silicon
+docker run -p 8080:8080 cschin/lilr_palooza-amd64 # for amd64 architechure
 ```
 
 ## example of submit a sequence for annotation
