@@ -216,6 +216,8 @@ async fn dna2gfe(
         .await
         .expect("writing fasta file error 2");
 
+    println!("Running miniprot with input fasta at: {}", fasta_path.display());
+
     let miniprot_output = Command::new("/opt/bin/miniprot")
         .args([
             &format!("{}", fasta_path.display()),
