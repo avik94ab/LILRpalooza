@@ -225,7 +225,7 @@ async fn dna2gfe(
             "--trans",
             "--aln",
             "--max-intron-out",
-            "20000",
+            "100000",
             "-G",
             "20000",
             "--outs=0.975",
